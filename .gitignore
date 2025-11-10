@@ -1,0 +1,56 @@
+# Node dependency directory
+node_modules/
+
+# Build / output
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Runtime files
+.pids/
+*.pid
+*.seed
+
+# Optional npm cache directory
+.npm/
+
+# dotenv environment variables
+.env
+.env.*.local
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Service account / keys / secrets
+*.key
+*.pem
+*.crt
+*.p12
+service-account-*.json
+*.service-account.json
+*.gcp.json
+
+# Temp
+.cache/
+tmp/
+temp/
