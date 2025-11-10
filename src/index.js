@@ -17,6 +17,11 @@ function startServer() {
   const keys = getApiKeys();
   const credentialManager = new CredentialManager(keys);
 
+  // Health check endpoint for load balancers and Render
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
   app.post('/sse', async (req, res) => {
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
