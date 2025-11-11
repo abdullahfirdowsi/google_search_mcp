@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Searchly — quick search</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Clean, minimalist search page inspired by simple search UIs (not a replica) */
+    :root{--accent:#1a73e8;--bg:#fff;--muted:#70757a}
+    html,body{height:100%;margin:0;font-family: 'Segoe UI', Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial}
+    body{background:linear-gradient(180deg,#f8fafc,#ffffff);display:flex;align-items:flex-start;justify-content:center;padding-top:80px;color:#202124}
+    .container{width:680px;max-width:92%;}
+    .brand{font-weight:700;font-size:52px;letter-spacing:1px;margin:0;text-align:center;color:var(--accent)}
+    .tagline{color:var(--muted);text-align:center;margin-top:6px;margin-bottom:28px}
+
+    .searchBox{display:flex;border:1px solid #e6e6e6;border-radius:24px;padding:8px 12px;background:#fff;box-shadow:0 1px 3px rgba(60,64,67,0.08)}
+    .searchBox input{flex:1;border:0;font-size:18px;padding:8px 12px;outline:none}
+    .searchBox button{background:var(--accent);border:0;color:#fff;padding:8px 16px;border-radius:20px;font-weight:600;cursor:pointer}
+
+    .controls{display:flex;gap:8px;justify-content:center;margin:18px 0}
+    .results{margin-top:18px}
+    .result{padding:14px 12px;border-radius:8px;border:1px solid #f1f3f4;margin-bottom:10px;background:#fff}
+    .result a{color:var(--accent);text-decoration:none;font-weight:600}
+    .result .link{color:#006621;font-size:13px;margin-bottom:6px}
+    .snippet{color:var(--muted);margin-top:6px}
+
+    .progress{font-size:13px;color:var(--muted);text-align:center;margin-top:12px}
+    .small{font-size:12px;color:#5f6368}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="brand">Searchly</h1>
+    <div class="tagline">A fast, minimal search demo</div>
+
+    <form id="searchForm">
+      <div class="searchBox">
+        <input id="q" placeholder="Search the web" autocomplete="off"/>
+        <button type="submit">Search</button>
+      </div>
+    </form>
+
+    <div class="controls small">Tip: this page streams results live using Server-Sent Events.</div>
+
+    <div id="progress" class="progress" style="display:none"></div>
+    <div id="results" class="results"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('searchForm');
+    const qEl = document.getElementById('q');
+    const resultsEl = document.getElementById('results');
+    const progressEl = document.getElementById('progress');
+    let es;
+
+    function clearResults(){ resultsEl.innerHTML=''; }
+    function showProgress(msg){ progressEl.style.display='block'; progressEl.textContent = msg; }
+    function hideProgress(){ progressEl.style.display='none'; }
+
+    function renderResults(payload){
+      if (!payload || !payload.data) return;
+      const items = payload.data.items || [];
+      clearResults();
+      if (!items.length){ resultsEl.innerHTML = '<div class="small">No results</div>'; return; }
+      for (const it of items){
+        const div = document.createElement('div'); div.className='result';
+        const a = document.createElement('a'); a.href = it.link || '#'; a.target='_blank'; a.rel='noreferrer noopener';
+        a.textContent = it.title || it.link || 'Untitled';
+        const linkline = document.createElement('div'); linkline.className='link'; linkline.textContent = it.link || '';
+        const snip = document.createElement('div'); snip.className='snippet'; snip.textContent = it.snippet || '';
+        div.appendChild(a); div.appendChild(linkline); div.appendChild(snip);
+        resultsEl.appendChild(div);
+      }
+    }
+
+    form.addEventListener('submit', (ev)=>{
+      ev.preventDefault();
+      const query = (qEl.value||'').trim();
+      if (!query) return;
+      // close any previous connection
+      if (es && typeof es.close === 'function') es.close();
+      clearResults(); hideProgress();
+
+      const url = '/sse?query=' + encodeURIComponent(query) + '&max_results=10';
+      showProgress('Connecting...');
+      es = new EventSource(url);
+
+      es.onopen = ()=> showProgress('Connected — streaming results...');
+      es.onmessage = (e)=>{
+        if (!e.data) return;
+        if (e.data === '[END]'){
+          showProgress('Stream finished');
+          es.close();
+          return;
+        }
+        try{
+          const parsed = JSON.parse(e.data);
+          if (parsed.type === 'progress'){
+            showProgress(parsed.data && parsed.data.text ? parsed.data.text : 'working...');
+          } else if (parsed.type === 'search_result'){
+            renderResults(parsed);
+          } else if (parsed.error){
+            showProgress('Error: ' + (parsed.details || parsed.error));
+          }
+        } catch (err){
+          // maybe a non-JSON message
+          console.log('sse:', e.data);
+        }
+      };
+      es.onerror = (ev)=>{
+        // When EventSource gets a network error it will call onerror; we show message but keep retry behavior
+        showProgress('Connection error or closed');
+        console.error('EventSource error', ev);
+        // don't auto-close here; EventSource will try to reconnect on its own
+      };
+    });
+  </script>
+</body>
+</html>
