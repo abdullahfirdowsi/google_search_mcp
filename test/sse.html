@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SSE Test</title>
+  <style>body{font-family: Arial; padding:20px;} #log{white-space:pre-wrap; border:1px solid #ddd; padding:10px; min-height:200px}</style>
+</head>
+<body>
+  <h2>SSE GET /sse test</h2>
+  <label>Query: <input id="query" value="replace my fridge" /></label>
+  <button id="start">Start</button>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg){ logEl.textContent += msg + '\n'; }
+
+    document.getElementById('start').addEventListener('click', ()=>{
+      const q = encodeURIComponent(document.getElementById('query').value || 'test');
+      const url = '/sse?query=' + q + '&max_results=5';
+      log('connecting to: ' + url);
+      const es = new EventSource(url);
+      es.onmessage = (e) => {
+        log('[message] ' + e.data);
+        try { const parsed = JSON.parse(e.data); if (parsed && parsed.type) log('  -> type: ' + parsed.type); } catch (e) {}
+      };
+      es.onerror = (e) => {
+        log('[error] EventSource error or connection closed');
+        es.close();
+      };
+      es.onopen = () => log('[open] connection opened');
+    });
+  </script>
+</body>
+</html>

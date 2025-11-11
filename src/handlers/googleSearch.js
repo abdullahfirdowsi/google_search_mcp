@@ -18,9 +18,8 @@ async function googleSearchHandler(payload, res, credentialManager) {
     const cred = credentialManager.getCurrent();
     if (!cred) {
       const err = formatError('API quota exceeded on all credentials', 'no valid credentials available');
+      res.write(`event: message\n`);
       res.write(`data: ${JSON.stringify(err)}\n\n`);
-      res.write(`data: [DONE]\n\n`);
-      res.end();
       return;
     }
 
@@ -42,9 +41,8 @@ async function googleSearchHandler(payload, res, credentialManager) {
 
       if (!items.length) {
         const err = formatError(`No search results found for query: ${query}`, 'items array empty');
+        res.write(`event: message\n`);
         res.write(`data: ${JSON.stringify(err)}\n\n`);
-        res.write(`data: [DONE]\n\n`);
-        res.end();
         console.log(`[WARN] No results for query: ${query}`);
         return;
       }
@@ -67,10 +65,9 @@ async function googleSearchHandler(payload, res, credentialManager) {
         }
       };
 
+      res.write(`event: message\n`);
       res.write(`data: ${JSON.stringify(payloadOut)}\n\n`);
-      res.write(`data: [DONE]\n\n`);
-      try { if (res.flush) res.flush(); } catch (e) {}
-      res.end();
+      try { if (typeof res.flush === 'function') res.flush(); } catch (e) {}
       console.log(`[SUCCESS] Returned ${normalized.length} results from google.com`);
       return;
     } catch (err) {
@@ -85,9 +82,8 @@ async function googleSearchHandler(payload, res, credentialManager) {
         credentialManager.rotateOnQuota();
         if (credentialManager.allExhausted()) {
           const e = formatError('API quota exceeded on all credentials', message);
+          res.write(`event: message\n`);
           res.write(`data: ${JSON.stringify(e)}\n\n`);
-          res.write(`data: [DONE]\n\n`);
-          res.end();
           return;
         }
         // continue to next loop iteration and try with rotated cred
@@ -100,9 +96,8 @@ async function googleSearchHandler(payload, res, credentialManager) {
         }
 
         const e = formatError('Search request failed', message);
+        res.write(`event: message\n`);
         res.write(`data: ${JSON.stringify(e)}\n\n`);
-        res.write(`data: [DONE]\n\n`);
-        res.end();
         console.log(`[ERROR] Search request failed for query=${query} message=${message}`);
         return;
       }

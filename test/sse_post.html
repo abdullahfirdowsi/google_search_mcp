@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SSE POST Streaming Test</title>
+  <style>body{font-family: Arial; padding:20px;} #log{white-space:pre-wrap; border:1px solid #ddd; padding:10px; min-height:200px}</style>
+</head>
+<body>
+  <h2>SSE POST streaming test (fetch + ReadableStream)</h2>
+  <label>Query: <input id="query" value="replace my fridge" /></label>
+  <button id="start">Start POST</button>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg){ logEl.textContent += msg + '\n'; }
+
+    document.getElementById('start').addEventListener('click', async ()=>{
+      const q = document.getElementById('query').value || 'test';
+      const url = '/sse';
+      const body = JSON.stringify({ type: 'google_search', data: { query: q, max_results: 5 } });
+      log('[POST] ' + url + ' body=' + body);
+
+      try {
+        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        if (!resp.ok) {
+          log('[ERROR] response not ok: ' + resp.status);
+          return;
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            log('[done] stream closed');
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          // SSE framing: events separated by double newlines. Handle chunks accordingly.
+          let parts = buffer.split('\n\n');
+          buffer = parts.pop(); // last piece may be partial
+          for (const part of parts) {
+            if (!part.trim()) continue;
+            log('[chunk]\n' + part);
+          }
+        }
+      } catch (e) {
+        log('[ERROR] ' + e);
+      }
+    });
+  </script>
+</body>
+</html>
